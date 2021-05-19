@@ -110,34 +110,58 @@ const ImageOfTheDay = (apod) => {
     }
 }
 
+const getPhotosFromRoverObject = (roverObject) => {
+    return roverObject.get('latest_photos')
+}
+
+const MakeHTMLRoverInfo = (roverName, launchDate, landinghDate, status) => {
+    return(
+        `<div class="roverTitle">
+            <h2>Here are the photos of the ${roverName} rover</h2>
+        </div>
+        <div class="roverInfo">
+            <p>The ${roverName} was launced on ${launchDate} and landed on mars on ${landinghDate}.
+            Its current status is ${status}
+            </p>
+        </div>`)
+}
+
+// HOF 1
+const getRoverInfo = (roverObject, getPhotosCallback) => {
+    const photos = getPhotosCallback(roverObject)
+    const roverName = photos.get('0').get('rover').get('name')
+    const launchDate = photos.get('0').get('rover').get('launch_date')
+    const landinghDate = photos.get('0').get('rover').get('landing_date')
+    const status = photos.get('0').get('rover').get('status')
+    return MakeHTMLRoverInfo(roverName, launchDate, landinghDate, status)
+}
+
+const Tile = (photo) => {
+    return `<div class="gridItem">
+                <img class="gridImg" src=${photo.get('img_src')}>
+                <p>This photo was taken in ${photo.get('earth_date')}</p>
+            </div>`
+        }
+
+const MakePhotoTiles = (photos) => {
+    return ('<main id="grid">\n' + photos.
+        map(photo => Tile(photo)).
+        reduce((acc, act) => acc + act + '\n')
+        + '\n<\main>')
+}
+
+//HOF 2
+const getPhotoTitles = (roverObject, getPhotosCallback) => {
+    const photos = getPhotosCallback(roverObject)
+    return MakePhotoTiles(photos)
+}
+
 const RoverPhotos = (data, rover) => {
     // If image does not already exist, or it is not from today -- request it again
     if (!data ) {
         getRoverData(rover)
     }
-    const launchDate = data.get('photos').get('0').get('rover').get('launch_date')
-    const landinghDate = data.get('photos').get('0').get('rover').get('landing_date')
-    const status = data.get('photos').get('0').get('rover').get('status')
-    const rover_info = `<div class="roverTitle">
-                            <h2>Here are the photos of the ${rover} rover</h2>
-                        </div>
-                        <div class="roverInfo">
-                            <p>The ${rover} was launced on ${launchDate} and landed on mars on ${landinghDate}.
-                            Its current status is ${status}
-                            </p>
-                        </div>`
-    const totalPhotos = data.get('photos').size > 15 ? 15 : data.get('photos').size 
-    const photos = data.get('photos').filter((val, idx) => idx < totalPhotos)
-    const makeTiles = (photo) => {
-        return `<div class="gridItem">
-                    <img class="gridImg" src=${photo.get('img_src')}>
-                    <p>This photo was taken in ${photo.get('earth_date')}</p>
-                </div>`
-            }
-    return rover_info + '<main id="grid">\n' + photos.
-        map(photo => makeTiles(photo)).
-        reduce((acc, act) => acc + act + '\n')
-        + '\n<\main>'
+    return getRoverInfo(data, getPhotosFromRoverObject) + getPhotoTitles(data, getPhotosFromRoverObject)
 }
 
 // ------------------------------------------------------  API CALLS
@@ -145,18 +169,36 @@ const RoverPhotos = (data, rover) => {
 // Example API call
 const getImageOfTheDay = () => {
     fetch(`http://localhost:3000/apod`)
-        .then(res => res.json())
+        .then((response) => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                throw new Error('Something went wrong');
+            }
+        })
         .then(data => {
             updateStore(store, { data: data,  currentData: 'apod'})
         })
+        .catch((error) => {
+        console.log(error)
+        });
 
 }
 
 const getRoverData = (rover) => {
     fetch(`http://localhost:3000/rovers/${rover}`)
-        .then(res => res.json())
-        .then(data => {
-            updateStore(store, { data: data.data,  currentData: rover} )
+        .then((response) => {
+            if (response.ok) {
+                return response.json();
+            } else {
+                throw new Error('Something went wrong');
+            }
         })
+        .then(data => {
+            updateStore(store, { data: data.data,  currentData: rover})
+        })
+        .catch((error) => {
+        console.log(error)
+        });
 
 }
